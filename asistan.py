@@ -2,7 +2,7 @@ import streamlit as st
 import requests
 
 # API ANAHTARIN (Değiştirme, bu haliyle kalsın)
-API_KEY = "AIzaSyDy6ax7kwteMHu_pCeSnv6dsTlxCEzkdDU".strip()
+API_KEY = "AIzaSyDlKJ6BWXEin7HvEccD3_nx-Wk1KuBu1f0".strip()
 
 # 1. Google'dan senin için çalışan en doğru model adını bulan fonksiyon
 def dogru_modeli_bul():
