@@ -1,72 +1,86 @@
 import streamlit as st
 import requests
 import base64
+from fpdf import FPDF
 
 # API AYARLARI
-API_KEY = "BURAYA_YENI_ALDIĞIN_ANAHTARI_YAPISTIR".strip()
+API_KEY = "BURAYA_API_ANAHTARINI_YAPISTIR".strip()
 MODEL_NAME = "models/gemini-1.5-flash"
 
+# PDF OLUŞTURMA FONKSİYONU
+def pdf_olustur(mesaj, karar, cevap):
+    pdf = FPDF()
+    pdf.add_page()
+    
+    # Başlık
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, txt="Amazon Islem Formu", ln=True, align='C')
+    pdf.ln(10)
+    
+    # İçerik
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt=f"Karar: {karar}", ln=True)
+    pdf.ln(5)
+    
+    pdf.multi_cell(0, 10, txt=f"Musteri Mesaji: {mesaj[:100]}...") # Mesajın özeti
+    pdf.ln(5)
+    
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(200, 10, txt="Hazirlanan Cevap:", ln=True)
+    pdf.set_font("Arial", size=10)
+    pdf.multi_cell(0, 5, txt=cevap.encode('latin-1', 'replace').decode('latin-1'))
+    
+    return pdf.output(dest='S').encode('latin-1')
+
 def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
-    # Fotoğraf varsa işle
     image_part = []
     if fotograf is not None:
         image_data = base64.b64encode(fotograf.read()).decode("utf-8")
         image_part = [{"inline_data": {"mime_type": "image/jpeg", "data": image_data}}]
 
-    talimat = f"""
-    Sen profesyonel bir Amazon satıcı asistanısın.
-    Müşteri Mesajı: '{musteri_mesaji}'
-    Senin Kararın: '{aksiyon}'
-    Cevap Tonu: '{ton}'
-    
-    GÖREVİN:
-    1. Eğer bir fotoğraf yüklendiyse, fotoğraftaki hasarı veya durumu analiz et ve cevaba dahil et.
-    2. Müşteriye kendi dilinde '{ton}' bir tonda profesyonel cevap yaz.
-    3. Cevabın altına "TÜRKÇE ÖZET:" başlığıyla ne yazdığını kısaca açıkla.
-    """
+    talimat = f"Müşteri Mesajı: {musteri_mesaji}\nKarar: {aksiyon}\nTon: {ton}\nProfesyonel cevap yaz ve altına Türkçe özet ekle."
     
     url = f"https://generativelanguage.googleapis.com/v1beta/{MODEL_NAME}:generateContent?key={API_KEY}"
-    
-    # Metin ve görseli birleştir
     contents = [{"parts": [{"text": talimat}] + image_part}]
-    payload = {"contents": contents}
     
     try:
-        r = requests.post(url, json=payload)
-        sonuc = r.json()
-        return sonuc['candidates'][0]['content']['parts'][0]['text']
-    except Exception as e:
-        return f"Hata oluştu: {e}"
+        r = requests.post(url, json={"contents": contents})
+        return r.json()['candidates'][0]['content']['parts'][0]['text']
+    except:
+        return "Bir hata oluştu."
 
-# --- ARAYÜZ (UI) ---
-st.set_page_config(page_title="Amazon Pro Asistan", page_icon="📦", layout="wide")
-
-st.title("📦 Amazon Satıcı Operasyon Merkezi")
-st.markdown("---")
+# --- ARAYÜZ ---
+st.set_page_config(page_title="Amazon Pro Asistan", layout="wide")
+st.title("📦 Amazon Operasyon & PDF Merkezi")
 
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    st.subheader("📥 Müşteri Bilgileri")
-    mesaj = st.text_area("Müşteri Mesajı:", placeholder="Buraya mesajı yapıştırın...", height=200)
-    yuklenen_dosya = st.file_uploader("Ürün Fotoğrafı (Opsiyonel):", type=["jpg", "png", "jpeg"])
+    mesaj = st.text_area("Müşteri Mesajı:", height=200)
+    yuklenen_dosya = st.file_uploader("Ürün Fotoğrafı:", type=["jpg", "png"])
     
 with col2:
-    st.subheader("⚙️ Aksiyon ve Ton")
-    karar = st.selectbox("Alınacak Aksiyon:", 
-                         ["İadeyi Kabul Et", "Hasar Kanıtı İste", "Kısmi İade/İndirim Teklif Et", "Ürünü Yeniden Gönder"])
+    karar = st.selectbox("Aksiyon:", ["İadeyi Kabul Et", "Hasar Kanıtı İste", "İndirim Teklif Et"])
+    ton = st.select_slider("Ton:", options=["Nazik", "Profesyonel", "Resmi"])
     
-    ton = st.select_slider("Cevap Tonu:", 
-                           options=["Çok Nazik", "Profesyonel", "Resmi ve Mesafeli"])
-    
-    st.write("---")
-    if st.button("🚀 Akıllı Cevap Oluştur", use_container_width=True):
+    if st.button("🚀 İşlemi Başlat", use_container_width=True):
         if mesaj:
-            with st.spinner('Yapay zeka analiz ediyor ve yazıyor...'):
-                cevap = amazon_asistani(mesaj, karar, ton, yuklenen_dosya)
-                st.success("İşlem Tamamlandı!")
-                st.markdown(cevap)
+            st.session_state.cevap = amazon_asistani(mesaj, karar, ton, yuklenen_dosya)
         else:
-            st.warning("Lütfen en azından bir müşteri mesajı girin.")
+            st.warning("Mesaj giriniz.")
 
-st.sidebar.info("Bu asistan Gemini 1.5 Flash altyapısını kullanır ve görsel analiz yeteneğine sahiptir.")
+# Sonuç ve PDF İndirme Alanı
+if 'cevap' in st.session_state:
+    st.markdown("---")
+    st.subheader("Hazırlanan Yanıt")
+    st.info(st.session_state.cevap)
+    
+    # PDF OLUŞTURMA BUTONU
+    pdf_data = pdf_olustur(mesaj, karar, st.session_state.cevap)
+    st.download_button(
+        label="📄 İade/İşlem Formunu PDF Olarak İndir",
+        data=pdf_data,
+        file_name="amazon_islem_formu.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
