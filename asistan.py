@@ -4,7 +4,7 @@ import base64
 from fpdf import FPDF  # fpdf2 yüklendiğinde de bu şekilde çağrılır
 
 # API AYARLARI
-API_KEY = "BURAYA_API_ANAHTARINI_YAPISTIR".strip()
+API_KEY = "AIzaSyDlKJ6BWXEin7HvEccD3_nx-Wk1KuBu1f0".strip()
 MODEL_NAME = "models/gemini-1.5-flash"
 
 # PDF OLUŞTURMA FONKSİYONU (GÜNCELLENDİ)
