@@ -4,11 +4,10 @@ import base64
 from fpdf import FPDF
 
 # --- API AYARLARI ---
-# Önce Streamlit Secrets (Gizli Ayarlar) kısmına bakar, yoksa tırnak içindekini kullanır.
 if "GEMINI_KEY" in st.secrets:
     API_KEY = st.secrets["GEMINI_KEY"]
 else:
-    # BURAYA YENİ ALDIĞIN ANAHTARI YAPIŞTIR (Eski anahtarlar iptal olmuş olabilir)
+    # Buradaki anahtarın tırnak içinde ve eksiksiz olduğundan emin ol
     API_KEY = "AIzaSyD2Dz4eG1yZaQUMCl1v7hEur_zis1w-7RA".strip()
 
 MODEL_NAME = "gemini-1.5-flash"
@@ -16,7 +15,6 @@ MODEL_NAME = "gemini-1.5-flash"
 # PDF OLUŞTURMA FONKSİYONU
 def pdf_olustur(mesaj, karar, cevap):
     try:
-        # fpdf2 kütüphanesi kullanılıyorsa latin-1 sorununu çözmek için bytes zorlaması yapılır
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Helvetica", "B", 16)
@@ -25,7 +23,6 @@ def pdf_olustur(mesaj, karar, cevap):
         
         pdf.set_font("Helvetica", size=12)
         def temizle(metin):
-            # Türkçe karakterleri PDF çökmesin diye temizler
             return str(metin).encode('ascii', 'ignore').decode('ascii')
 
         pdf.cell(0, 10, txt=f"Karar: {temizle(karar)}", ln=True)
@@ -38,7 +35,6 @@ def pdf_olustur(mesaj, karar, cevap):
         pdf.set_font("Helvetica", size=10)
         pdf.multi_cell(0, 5, txt=temizle(cevap))
         
-        # Çıktıyı bytes formatına çeviriyoruz (Streamlit için kritik)
         return bytes(pdf.output())
     except Exception as e:
         st.error(f"PDF hatası: {e}")
@@ -62,11 +58,12 @@ def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
     
     GÖREVİN:
     1. Eğer fotoğraf varsa analiz et ve hasar durumunu onayla.
-    2. Müşterinin yazdığı dilde (İngilizce, İsveççe, Almanca vb.) profesyonel bir cevap yaz.
+    2. Müşterinin yazdığı dilde profesyonel bir cevap yaz.
     3. Cevabın en altına mutlaka 'TÜRKÇE ÖZET:' başlığıyla satıcıya ne yazdığını açıkla.
     """
     
-   url = f"https://generativelanguage.googleapis.com/v1/models/{MODEL_NAME}:generateContent?key={API_KEY}"
+    # URL yapısı ve boşluk düzeltildi
+    url = f"https://generativelanguage.googleapis.com/v1/models/{MODEL_NAME}:generateContent?key={API_KEY}"
     payload = {"contents": [{"parts": [{"text": talimat}] + image_part}]}
     
     try:
@@ -78,16 +75,15 @@ def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
         elif 'error' in response_json:
             return f"⚠️ API Hatası: {response_json['error']['message']}"
         else:
-            return "⚠️ Beklenmedik bir hata oluştu. Lütfen API anahtarını kontrol edin."
+            return "⚠️ Beklenmedik bir hata oluştu. API anahtarınızı kontrol edin."
     except Exception as e:
         return f"⚠️ Bağlantı Hatası: {e}"
 
-# --- ARAYÜZ (GÖRSEL) ---
+# --- ARAYÜZ ---
 st.set_page_config(page_title="Amazon Pro Asistan", layout="wide", page_icon="📦")
 st.title("📦 Amazon Operasyon & PDF Merkezi")
 st.markdown("---")
 
-# Yanıtı hafızada tutmak için
 if 'cevap_gecmisi' not in st.session_state:
     st.session_state.cevap_gecmisi = ""
 
@@ -95,7 +91,7 @@ col1, col2 = st.columns([1, 1])
 
 with col1:
     st.subheader("📥 Veri Girişi")
-    mesaj = st.text_area("Müşteri Mesajı:", height=200, placeholder="Gelen mesajı buraya yapıştırın...")
+    mesaj = st.text_area("Müşteri Mesajı:", height=200, placeholder="Gelen mesajı yapıştırın...")
     yuklenen_dosya = st.file_uploader("Fotoğraf Yükle (İsteğe Bağlı):", type=["jpg", "png", "jpeg"])
     
 with col2:
@@ -111,13 +107,11 @@ with col2:
         else:
             st.warning("Lütfen önce bir müşteri mesajı girin.")
 
-# SONUÇ ALANI
 if st.session_state.cevap_gecmisi:
     st.markdown("---")
     st.subheader("🤖 Hazırlanan Yanıt")
     st.info(st.session_state.cevap_gecmisi)
     
-    # PDF Oluşturma ve İndirme
     pdf_data = pdf_olustur(mesaj, karar, st.session_state.cevap_gecmisi)
     if pdf_data:
         st.download_button(
