@@ -11,7 +11,7 @@ else:
     # BURAYA YENİ ALDIĞIN ANAHTARI YAPIŞTIR (Eski anahtarlar iptal olmuş olabilir)
     API_KEY = "AIzaSyD2Dz4eG1yZaQUMCl1v7hEur_zis1w-7RA".strip()
 
-MODEL_NAME = "models/gemini-1.5-flash"
+MODEL_NAME = "gemini-1.5-flash"
 
 # PDF OLUŞTURMA FONKSİYONU
 def pdf_olustur(mesaj, karar, cevap):
@@ -66,7 +66,7 @@ def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
     3. Cevabın en altına mutlaka 'TÜRKÇE ÖZET:' başlığıyla satıcıya ne yazdığını açıkla.
     """
     
-    url = f"https://generativelanguage.googleapis.com/v1beta/{MODEL_NAME}:generateContent?key={API_KEY}"
+   url = f"https://generativelanguage.googleapis.com/v1/models/{MODEL_NAME}:generateContent?key={API_KEY}"
     payload = {"contents": [{"parts": [{"text": talimat}] + image_part}]}
     
     try:
