@@ -7,7 +7,7 @@ from fpdf import FPDF
 # ÖNEMLİ: Eğer Streamlit Secrets kullanıyorsan alttaki satırı aktif et:
 # API_KEY = st.secrets["GEMINI_KEY"]
 # Şimdilik senin anahtarını direkt buraya tanımlıyorum:
-API_KEY = "AIzaSyD2Dz4eG1yZhEur_zis1w-7RA".strip()
+API_KEY = "AIzaSyD2Dz4eG1yZaQUMCl1v7hEur_zis1w-7RA".strip()
 MODEL_NAME = "models/gemini-1.5-flash"
 
 # PDF OLUŞTURMA FONKSİYONU
