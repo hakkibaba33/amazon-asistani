@@ -1,13 +1,13 @@
 import streamlit as st
 import requests
 import base64
-from fpdf import FPDF  # fpdf2 yüklendiğinde de bu şekilde çağrılır
+from fpdf import FPDF  # fpdf2 kütüphanesini kullanır
 
 # API AYARLARI
-API_KEY = "AIzaSyDlKJ6BWXEin7HvEccD3_nx-Wk1KuBu1f0".strip()
+API_KEY = "AIzaSyDlKJ6BWXEin7HvEccD3_nx-Wk1KuBu1f0".strip() # Buraya kendi anahtarını kontrol ederek koy
 MODEL_NAME = "models/gemini-1.5-flash"
 
-# PDF OLUŞTURMA FONKSİYONU (GÜNCELLENDİ)
+# PDF OLUŞTURMA FONKSİYONU
 def pdf_olustur(mesaj, karar, cevap):
     pdf = FPDF()
     pdf.add_page()
@@ -18,10 +18,9 @@ def pdf_olustur(mesaj, karar, cevap):
     pdf.ln(10)
     
     pdf.set_font("Helvetica", size=12)
-    # latin-1 hatasını engellemek için metni temizleyen fonksiyon
+    # Karakter hatasını önlemek için temizleme fonksiyonu
     def temizle(metin):
-        # fpdf2'nin en basit haliyle hata vermemesi için karakterleri güvenli hale getirelim
-        return metin.encode('ascii', 'ignore').decode('ascii')
+        return str(metin).encode('ascii', 'ignore').decode('ascii')
 
     pdf.cell(0, 10, txt=f"Karar: {temizle(karar)}", ln=True)
     pdf.ln(5)
@@ -34,10 +33,10 @@ def pdf_olustur(mesaj, karar, cevap):
     pdf.set_font("Helvetica", size=10)
     pdf.multi_cell(0, 5, txt=temizle(cevap))
     
-    # output(dest='S') yerine direkt byte olarak alıyoruz
-    return pdf.output()
+    # --- KRİTİK DEĞİŞİKLİK BURADA: bytes() ekledik ---
+    return bytes(pdf.output())
 
-# --- GERİ KALAN KODLAR AYNI ---
+# YANIT OLUŞTURMA FONKSİYONU
 def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
     image_part = []
     if fotograf is not None:
@@ -53,8 +52,9 @@ def amazon_asistani(musteri_mesaji, aksiyon, ton, fotograf=None):
         r = requests.post(url, json={"contents": contents})
         return r.json()['candidates'][0]['content']['parts'][0]['text']
     except:
-        return "Bir hata oluştu."
+        return "Bir hata oluştu. API anahtarını veya bağlantını kontrol et."
 
+# --- ARAYÜZ ---
 st.set_page_config(page_title="Amazon Pro Asistan", layout="wide")
 st.title("📦 Amazon Operasyon & PDF Merkezi")
 
@@ -64,8 +64,8 @@ if 'cevap' not in st.session_state:
 col1, col2 = st.columns([1, 1])
 
 with col1:
-    mesaj = st.text_area("Müşteri Mesajı:", height=200)
-    yuklenen_dosya = st.file_uploader("Ürün Fotoğrafı:", type=["jpg", "png"])
+    mesaj = st.text_area("Müşteri Mesajı:", height=200, placeholder="Müşteriden gelen mesajı buraya yapıştırın...")
+    yuklenen_dosya = st.file_uploader("Ürün Fotoğrafı (Opsiyonel):", type=["jpg", "png", "jpeg"])
     
 with col2:
     karar = st.selectbox("Aksiyon:", ["Iadeyi Kabul Et", "Hasar Kaniti Iste", "Indirim Teklif Et"])
@@ -73,22 +73,25 @@ with col2:
     
     if st.button("🚀 İşlemi Başlat", use_container_width=True):
         if mesaj:
-            with st.spinner('Hazırlanıyor...'):
+            with st.spinner('Yapay zeka analiz ediyor...'):
                 st.session_state.cevap = amazon_asistani(mesaj, karar, ton, yuklenen_dosya)
         else:
-            st.warning("Mesaj giriniz.")
+            st.warning("Lütfen bir müşteri mesajı girin.")
 
+# SONUÇ EKRANI VE İNDİRME BUTONU
 if st.session_state.cevap:
     st.markdown("---")
     st.subheader("Hazırlanan Yanıt")
     st.info(st.session_state.cevap)
     
     try:
+        # PDF verisini alıyoruz
         pdf_data = pdf_olustur(mesaj, karar, st.session_state.cevap)
+        
         st.download_button(
             label="📄 İşlem Formunu PDF İndir",
-            data=pdf_data,
-            file_name="amazon_form.pdf",
+            data=pdf_data,  # Burası artık 'bytes' formatında olduğu için hata vermeyecek
+            file_name="amazon_islem_formu.pdf",
             mime="application/pdf",
             use_container_width=True
         )
